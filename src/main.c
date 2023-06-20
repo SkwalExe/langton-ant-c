@@ -37,11 +37,11 @@ void sigint_handler(int sig)
 
 void set_signal_action(void)
 {
-	struct sigaction act;
+  struct sigaction act;
 
   memset(&act, 0, sizeof(act));
-	act.sa_handler = &sigint_handler;
-	sigaction(SIGINT, &act, NULL);
+  act.sa_handler = &sigint_handler;
+  sigaction(SIGINT, &act, NULL);
 }
 
 
