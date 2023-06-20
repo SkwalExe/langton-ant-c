@@ -21,11 +21,22 @@ void show_world(int height, int width, Cell world[height][width], Ant ant)
   {
     for (int j = 0; j < width; j++)
     {
-      printf("\x1b[%sm  \x1b[0m", ant.pos.y == i && ant.pos.x == j ? "41" : (world[i][j] ? "47" : "40"));
+      printf("\x1b[%sm  \x1b[0m", ant.pos.y == i && ant.pos.x == j ? "41" : (world[i][j] == filled ? "47" : "40"));
     }
     printf("\n");
   }
   fflush(stdout);
+}
+
+void render_matrix(MatrixChangeList *changes, Ant ant)
+{
+  for (int i = 0; i < changes->length; i++)
+  {
+    print_at(changes->changes[i].pos.x * 2 + 1, changes->changes[i].pos.y, changes->changes[i].value == filled ? "\x1b[47m  \x1b[0m" : "\x1b[40m  \x1b[0m");
+  }
+  print_at(ant.pos.x * 2 + 1, ant.pos.y, "\x1b[41m  \x1b[0m");
+  fflush(stdout);
+  changes->length = 0;
 }
 
 void reset_ant(Ant *ant, int height, int width)
@@ -35,16 +46,26 @@ void reset_ant(Ant *ant, int height, int width)
   ant->dir = right;
 }
 
-void next_gen(int height, int width, Cell world[height][width], Ant *ant, bool teleport)
+void update_cell(int height, int width, Cell world[height][width], MatrixChangeList *changes, Position pos, Cell value, bool do_changes) 
+{ 
+  world[pos.y][pos.x] = value;
+  if (!do_changes) return;
+  changes->changes[changes->length].pos = pos;
+  changes->changes[changes->length].value = value;
+  changes->length++;
+}
+
+void next_gen(int height, int width, Cell world[height][width], Ant *ant, bool teleport, MatrixChangeList *changes,  bool do_changes)
 {
   // inverse the cell the ant is on
   if (world[ant->pos.y][ant->pos.x] == filled)
-    world[ant->pos.y][ant->pos.x] = empty;
+    update_cell(height, width, world, changes, ant->pos, empty, do_changes);
   else
   {
-    world[ant->pos.y][ant->pos.x] = filled;
-  } // rotate the ant
+    update_cell(height, width, world, changes, ant->pos, filled, do_changes);
+  } 
 
+  // rotate the ant
   if (world[ant->pos.y][ant->pos.x] == filled)
   {
     // turn left

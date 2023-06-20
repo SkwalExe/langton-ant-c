@@ -8,7 +8,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <time.h>
-
 #endif // Windows/Linux
 
 void get_terminal_size(int *width, int *height)
@@ -55,4 +54,30 @@ void random_int_init(void)
 int random_int(int min, int max)
 {
   return rand() % (max - min + 1) + min;
+}
+
+void print_at(int x, int y, char *str)
+{
+  printf("\033[%d;%dH%s", y, x, str);
+}
+
+void hide_cursor(void)
+{
+  printf("\e[?25l");
+  #if defined(_WIN32)
+  // TODO: but I think the user input is disabled by default when a program is running
+  #elif defined(__linux__)
+  system("stty -echo");
+  #endif // Windows/Linux 
+  
+}
+
+void show_cursor(void)
+{
+  printf("\e[?25h");
+  #if defined(_WIN32)
+  // TODO: but I think the user input is disabled by default when a program is running
+  #elif defined(__linux__)
+  system("stty echo");
+  #endif // Windows/Linux 
 }
