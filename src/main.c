@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <signal.h>
 
 #include "utils.h"
 #include "langton.h"
@@ -23,6 +24,26 @@ long long moves = 0;
 bool teleport = false;
 bool info = false;
 // --------------
+
+void sigint_handler(int sig)
+{
+  if (sig == SIGINT)
+  {
+    print_at(0, height + 2, "Bye !\n");
+    show_cursor();
+    exit(0);
+  }
+}
+
+void set_signal_action(void)
+{
+  struct sigaction act;
+
+  memset(&act, 0, sizeof(act));
+  act.sa_handler = &sigint_handler;
+  sigaction(SIGINT, &act, NULL);
+}
+
 
 // Prints the help message
 void help(void)
@@ -54,7 +75,7 @@ void version(void)
 
 int main(int argc, char **argv)
 {
-
+  set_signal_action();
   // Parse args ------------------------------------------------------------------------------
   while (--argc > 0)
   {
@@ -165,8 +186,8 @@ int main(int argc, char **argv)
   if (height == 0 && width == 0)
   {
     get_terminal_size(&width, &height);
-    width -= 4;
-    height -= 4;
+    if (info)
+      height -= 2;
   }
 
   // Cut the width in half because a cell taxe two cols
@@ -174,6 +195,8 @@ int main(int argc, char **argv)
 
   Cell world[height][width];
   Ant ant;
+  MatrixChangeList changes;
+  changes.length = 0;
   reset_ant(&ant, height, width);
 
   reset_world(height, width, world);
@@ -181,11 +204,12 @@ int main(int argc, char **argv)
   if (random_generation)
     populate_world(height, width, world, one_chance_over);
 
+  hide_cursor();
   if (moves != 0)
   {
     for (long long i = 0; i < moves; i++)
     {
-      next_gen(height, width, world, &ant, teleport);
+      next_gen(height, width, world, &ant, teleport, &changes, false);
       if ((i + 1) % 1000000 == 0)
       {
         printf("\rGenerating : %lld/%lld - %d%%", i + 1, moves, (int)(100.0 * i / moves));
@@ -194,13 +218,17 @@ int main(int argc, char **argv)
     }
     printf("\n");
   }
+  show_world(height, width, world, ant);
   while (true)
   {
     moves++;
-    show_world(height, width, world, ant);
+
+    render_matrix(&changes, ant);
+    print_at(0, height + 2, "");
     if (info)
-      printf("Generations : %lld - Ant position : X%d/%d - Y%d/%d - Ant direction : %s\n", moves, ant.pos.x, width, ant.pos.y, height, ant.dir == 0 ? "Up" : (ant.dir == 1 ? "Right" : (ant.dir == 2 ? "Down" : "Left")));
-    next_gen(height, width, world, &ant, teleport);
+      printf("\rGenerations : %lld - Ant position : X%d/%d - Y%d/%d - Ant direction : %s", moves, ant.pos.x, width, ant.pos.y, height, ant.dir == 0 ? "Up" : (ant.dir == 1 ? "Right" : (ant.dir == 2 ? "Down" : "Left")));
+
+    next_gen(height, width, world, &ant, teleport, &changes, true);
     sleep_ms(delay);
   }
   return 0;
